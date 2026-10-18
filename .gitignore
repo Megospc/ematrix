@@ -1,0 +1,6 @@
+/.cache
+/.vscode
+/build
+/test.conf
+/compile_commands.json
+/compile_commands.tmp
