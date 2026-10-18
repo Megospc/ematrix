@@ -40,6 +40,7 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 | `H` | int<br>pixels | Window height. | 600 | 1 | 32768 |
 | `Title` | string | Window title. | `"ematrix"` | | |
 | `CharSize` | int<br>pixels | Size of the rain characters. | 20 | 1 | 32768 |
+| `Border` | int<br>pixels | Empty gap from window borders. | 4 | 0 | 32768 |
 | `Stretch` | bool | Allows glyphs to be stretched for an ideal fit. | 1 | 0 | 1 |
 | `VSync` | int | If set to 0, VSync is disabled. other values act as a divisor for the monitor's frame rate. Can be ignored if the GPU does not support VSync. | 1 | 0 | 32768 |
 | `Font` | string<br>path | Path to a font file (PNG MSDF). If left empty, the embedded ematrix font is used.<br>See [Fonts](#fonts). | `""` | | |
