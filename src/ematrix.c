@@ -270,15 +270,15 @@ static void EnsureBufferSize(int size)
     }
 }
 
-static inline uint8_t* ColorMapAt(int x, int y, int z)
+static inline uint8_t* ColorAt(int x, int y, int z)
 {
     return (cColors + ((z * cColorResY + y) * cColorResX + x) * 3);
 }
 
-static inline void SetColorMap(int x, int y, int z, // Used by DEFAULT_COLORS
+static inline void SetColor(int x, int y, int z, // Used by DEFAULT_COLOR
                                uint8_t r, uint8_t g, uint8_t b)
 {
-    uint8_t* c = ColorMapAt(x, y, z);
+    uint8_t* c = ColorAt(x, y, z);
     c[0] = r;
     c[1] = g;
     c[2] = b;
@@ -366,7 +366,7 @@ static bool ParseLineCompareColorKey(const char* line, uint8_t** ret,
     {
         return false;
     }
-    *ret = ColorMapAt(p[0], p[1], p[2]) + k;
+    *ret = ColorAt(p[0], p[1], p[2]) + k;
     return true;
 }
 static int ParseLineParseInt(const char* value, int min, int max,
@@ -1124,7 +1124,7 @@ static void MouseButtonCallback(GLFWwindow* window, int button,
 
 int main(int argc, char** argv)
 {
-    DEFAULT_COLORS
+    DEFAULT_COLOR
 
     for (int i = 1; i < argc; i++)
     {
@@ -1424,7 +1424,7 @@ int main(int argc, char** argv)
                 }
                 else
                 {
-                    uint8_t* c = ColorMapAt(x, y, z-1);
+                    uint8_t* c = ColorAt(x, y, z-1);
                     for (int i = 0; i < 3; i++)
                     {
                         b[i] = c[i];
