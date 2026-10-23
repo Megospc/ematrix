@@ -105,8 +105,9 @@ static int_config_def_t INT_CONFIG_DEFS[] =
     INT_CONFIG_DEF(Border, 0, 32768),
     INT_CONFIG_DEF(Stretch, 0, 1),
     INT_CONFIG_DEF(VSync, 0, 32678),
-    INT_CONFIG_DEF(FontNumGlyphs, 1, 32768),
-    INT_CONFIG_DEF(FontNumCols, 1, 32768),
+    INT_CONFIG_DEF(FontNum, 1, 32768),
+    INT_CONFIG_DEF(FontCols, 1, 32768),
+    INT_CONFIG_DEF(FontRows, 1, 32768),
     INT_CONFIG_DEF(MinRandPeriod, 1, 32768),
     INT_CONFIG_DEF(MaxRandPeriod, 1, 32768),
     INT_CONFIG_DEF(PowRandPeriod, 0, 32768),
@@ -837,7 +838,7 @@ static void MatrixResize(int w, int h)
         {
             matrix_char_t* c = MatrixCharAt(x, y);
             c->randctr = Rand(cMaxRandPeriod);
-            c->glyph = Rand(cFontNumGlyphs);
+            c->glyph = Rand(cFontNum);
             c->ctr = 0;
         }
     }
@@ -919,7 +920,7 @@ static void MatrixUpdate(void)
             c->randctr--;
             if (c->randctr == 0)
             {
-                c->glyph = Rand(cFontNumGlyphs);
+                c->glyph = Rand(cFontNum);
                 c->randctr = MatrixGenRandPeriod();
             }
             b[0] = gGlyphLut[c->glyph*2+0];
@@ -1158,14 +1159,13 @@ int main(int argc, char** argv)
         }
     }
 
-    int fontNumRows = (cFontNumGlyphs + cFontNumCols - 1) / cFontNumCols;
-    gGlyphLut = Malloc(cFontNumGlyphs * 2 * sizeof(GLfloat), "gGlyphLut");
-    for (int i = 0; i < cFontNumGlyphs; i++)
+    gGlyphLut = Malloc(cFontNum * 2 * sizeof(GLfloat), "gGlyphLut");
+    for (int i = 0; i < cFontNum; i++)
     {
-        int col = (i % cFontNumCols);
-        int row = (i / cFontNumCols);
-        gGlyphLut[i*2+0] = (GLfloat)col / (GLfloat)cFontNumCols;
-        gGlyphLut[i*2+1] = (GLfloat)row / (GLfloat) fontNumRows;
+        int col = (i % cFontCols);
+        int row = (i / cFontCols);
+        gGlyphLut[i*2+0] = (GLfloat)col / (GLfloat)cFontCols;
+        gGlyphLut[i*2+1] = (GLfloat)row / (GLfloat)cFontRows;
     }
     gHasGaussBlur = (cBlurGauss > 1 && cBlurAlpha > 0);
     gHasLinearBlur = (cBlurLinear > 1 && cBlurAlpha > 0);
@@ -1334,7 +1334,7 @@ int main(int argc, char** argv)
     SetUniformInt(gProgram1, "tColors", 1);
     gProgram1uPosSize = glGetUniformLocation(gProgram1, "uPosSize");
     glUniform2f(glGetUniformLocation(gProgram1, "uTexPosSize"),
-                1.0F/(GLfloat)cFontNumCols, 1.0F/(GLfloat)fontNumRows);
+                1.0F/(GLfloat)cFontCols, 1.0F/(GLfloat)cFontRows);
     GlCheckpoint("Program1");
 
     glGenVertexArrays(1, &gVertexArray);

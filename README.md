@@ -44,8 +44,9 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 | `Stretch` | bool | Allows glyphs to be stretched for an ideal fit. | 1 | 0 | 1 |
 | `VSync` | int | If set to 0, VSync is disabled. other values act as a divisor for the monitor's frame rate. Can be ignored if the GPU does not support VSync. | 1 | 0 | 32768 |
 | `Font` | string<br>path | Path to a font file (PNG MSDF). If left empty, the embedded ematrix font is used.<br>See [Fonts](#fonts). | `""` | | |
-| `FontNumGlyphs` | int | The number of glyphs contained in the font file.<br>See [Fonts](#fonts). | 57 | 1 | 32768 |
-| `FontNumCols` | int | The number of columns the glyphs are grouped into.<br>See [Fonts](#fonts). | 8 | 1 | 32768 |
+| `FontNum` | int | The number of glyphs contained in the font file.<br>See [Fonts](#fonts). | 57 | 1 | 32768 |
+| `FontCols` | int | The number of columns the glyphs are grouped into.<br>See [Fonts](#fonts). | 8 | 1 | 32768 |
+| `FontRows` | int | The number of rows the glyphs are grouped into.<br>See [Fonts](#fonts). | 8 | 1 | 32768 |
 | `MinRandPeriod` | int<br>frames | Minimum time between glyph randomization. | 200 | 1 | 32768 |
 | `MaxRandPeriod` | int<br>frames | Maximum time between glyph randomization. | 400 | 1 | 32768 |
 | `PowRandPeriod` | int | Maximum steps of time between glyph randomization pow'ing. | 8 | 0 | 32768 |
