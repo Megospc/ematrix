@@ -62,6 +62,7 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 | `BlurAlpha` | int<br>0.01% | The brightness of the blur. | 5000 | 0 | INT_MAX |
 | `BlurPow` | int<br>0.01% | The power applied to the blur. Higher values result in a sharper blur. | 10000 | 0 | INT_MAX |
 | `Noise` | int<br>0.01% | The strength of blur noise. | 2000 | 0 | 10000 |
+| `NoisePow` | int<br>0.01% | The power applied to the blur noise. | 20000 | 0 | 32768 |
 | `ColorX` | int<br>0.01% | X resolution of the color map. | 1 | 1 | 32 |
 | `ColorY` | int<br>0.01% | Y resolution of the color map. | 1 | 1 | 32 |
 | `ColorZ` | int<br>0.01% | Z resolution of the color map. | 1 | 1 | 32 |

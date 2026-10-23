@@ -125,6 +125,7 @@ static int_config_def_t INT_CONFIG_DEFS[] =
     INT_CONFIG_DEF(BlurAlpha, 0, INT_MAX),
     INT_CONFIG_DEF(BlurPow, 0, INT_MAX),
     INT_CONFIG_DEF(Noise, 0, 10000),
+    INT_CONFIG_DEF(NoisePow, 0, 32768),
     INT_CONFIG_DEF(ColorX, 1, MAX_COLOR_RES_X),
     INT_CONFIG_DEF(ColorY, 1, MAX_COLOR_RES_Y),
     INT_CONFIG_DEF(ColorZ, 1, MAX_COLOR_RES_Z),
@@ -1236,7 +1237,20 @@ int main(int argc, char** argv)
             "out vec4 fColor;\n"
             "uniform vec2 uPx;\n"
             "uniform sampler2D t0;\n"
-            "uniform sampler2D t1;\n"
+            "uniform sampler2D t1;\n");
+
+        if (cNoise > 0)
+        {
+            ShaderSourceAppend(&gFragment3, &gFragment3Len,
+                "float rand(vec2 p)\n"
+                "{\n"
+                "    p = fract(p * vec2(123.34, 456.21));\n"
+                "    p += dot(p, p + 45.32);\n"
+                "    return fract(p.x * p.y);\n"
+                "}\n");
+        }
+        
+        ShaderSourceAppend(&gFragment3, &gFragment3Len,
             "void main()\n"
             "{\n");
         
@@ -1296,8 +1310,8 @@ int main(int argc, char** argv)
         {
             float n = (GLfloat)cNoise / 10000.0F;
             ShaderSourceAppend(&gFragment3, &gFragment3Len,
-                " * (fract(sin(dot(vTexPos/uPx, vec2(12.9898, 78.233))) * 43758.5453123) * %f + %f)",
-                n, 1.0F-n);
+                " * pow(rand(floor(vTexPos / uPx)) * %f + %f, %f)",
+                n, 1.0F-n, (GLfloat)cNoisePow / 10000.0F);
         }
         ShaderSourceAppend(&gFragment3, &gFragment3Len, ";\n}\n");
 

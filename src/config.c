@@ -36,6 +36,7 @@ static int cLinear = 3;
 static int cBlurAlpha = 5000;
 static int cBlurPow = 10000;
 static int cNoise = 2000;
+static int cNoisePow = 20000;
 static int cColorX = 1;
 static int cColorY = 1;
 static int cColorZ = 1;
