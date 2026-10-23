@@ -26,7 +26,9 @@
 extern const unsigned char _binary_src_font_png_start[];
 extern const unsigned char _binary_src_font_png_end[];
 
-static uint8_t cColors[(MAX_COLOR_RES_Z + 1) * MAX_COLOR_RES_X * MAX_COLOR_RES_Y * 3];
+static uint8_t cColors[(MAX_COLOR_RES_Z + 1) *
+                        MAX_COLOR_RES_X *
+                        MAX_COLOR_RES_Y * 3];
 
 static bool gGlfwInited = false;
 static GLFWwindow* gWindow = NULL;
@@ -818,12 +820,12 @@ static void MatrixResize(int w, int h)
     {
         return;
     }
-    gMatrixW = w;
-    gMatrixH = h;
     free(gMatrixDrops);
     free(gMatrixChars);
-    gMatrixDrops = Malloc(gMatrixW            * sizeof(matrix_drop_t), "gMatrixDrops");
-    gMatrixChars = Malloc(gMatrixW * gMatrixH * sizeof(matrix_char_t), "gMatrixChars");
+    gMatrixDrops = Malloc(w     * sizeof(matrix_drop_t), "gMatrixDrops");
+    gMatrixChars = Malloc(w * h * sizeof(matrix_char_t), "gMatrixChars");
+    gMatrixW = w;
+    gMatrixH = h;
 
     for (int x = 0; x < gMatrixW; x++)
     {
@@ -1281,7 +1283,8 @@ int main(int argc, char** argv)
         }
         else
         {
-            ShaderSourceAppend(&gFragment3, &gFragment3Len, "pow(fColor, vec4(%f))",
+            ShaderSourceAppend(&gFragment3, &gFragment3Len,
+                "pow(fColor, vec4(%f))",
                 (GLfloat)cBlurPow / 10000.0F);
         }
         if (cBlurAlpha != 10000)
@@ -1293,8 +1296,8 @@ int main(int argc, char** argv)
         {
             float n = (GLfloat)cBlurNoise / 10000.0F;
             ShaderSourceAppend(&gFragment3, &gFragment3Len,
-                " * (fract(sin(dot(vTexPos/uPx, vec2(12.9898, 78.233))) * 43758.5453123)"
-                "* %f + %f)", n, 1.0F-n);
+                " * (fract(sin(dot(vTexPos/uPx, vec2(12.9898, 78.233))) * 43758.5453123) * %f + %f)",
+                n, 1.0F-n);
         }
         ShaderSourceAppend(&gFragment3, &gFragment3Len, ";\n}\n");
 
@@ -1442,7 +1445,7 @@ int main(int argc, char** argv)
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, cColorResX, cColorResY, (cColorResZ+2),
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, cColorResX, cColorResY, cColorResZ+2,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, gBuffer);
     GlCheckpoint("ColorsTexture");
     

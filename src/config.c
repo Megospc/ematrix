@@ -47,5 +47,5 @@ static char* cTitle = "ematrix";
 
 // Idk why may you want to change these three
 #define GL_INFOLOG_BUFFER_SIZE 4096 // maximum size of OpenGL error log
-#define BUFFER_INIT_SIZE 4096 // initial size of dynamically allocated buffer, min: 1
-#define BUFFER_RESIZE_MULTIPLY 2 // how fast the buffer is growing, min: 2
+#define BUFFER_INIT_SIZE 4096 // initial size of dynamic buffer, min: 1
+#define BUFFER_RESIZE_MULTIPLY 2 // how fast the buffer is growing, min: 1
