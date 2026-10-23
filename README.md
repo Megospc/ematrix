@@ -29,12 +29,12 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 ### List of Options
 | Key | Type | Description | Default | Min | Max |
 | - | - | - | - | - | - |
-| `LogLevel` | enum | Logging verbosity level.<br>0: none, 1: errors, 2: errors+version, 3: verbose. | 2 | 0 | 3 |
-| `Fullscreen` | int<br>index | The index of the screen to open in fullscreen. If set to -1, fullscreen is disabled. | -1 | -1 | 32768 |
-| `FullscreenW` | int<br>pixels | Fullscreen width (0 for default). | 0 | 0 | 32768 |
-| `FullscreenH` | int<br>pixels | Fullscreen height (0 for default). | 0 | 0 | 32768 |
-| `Resizeable` | bool | If enabled, allows resizing the window and toggling fullscreen via the `KeyFullscreen` keybind. | 1 | 0 | 1 |
-| `AutoIconify` | bool | If enabled, the fullscreen window will iconify when you click on another screen. | 0 | 0 | 1 |
+| `Log` | int | Logging verbosity level.<br>0: none, 1: errors, 2: errors+version, 3: verbose. | 2 | 0 | 3 |
+| `Screen` | int<br>index | The index of the screen to open in fullscreen. If set to -1, fullscreen is disabled. | -1 | -1 | 32768 |
+| `ScreenW` | int<br>pixels | Fullscreen width (0 for default). | 0 | 0 | 32768 |
+| `ScreenH` | int<br>pixels | Fullscreen height (0 for default). | 0 | 0 | 32768 |
+| `Resize` | bool | If enabled, allows resizing the window and toggling fullscreen via the `KeyFullscreen` keybind. | 1 | 0 | 1 |
+| `AutoIcon` | bool | If enabled, the fullscreen window will iconify when you click on another screen. | 0 | 0 | 1 |
 | `HideMouse` | bool | If enabled, the mouse cursor will be hidden when clicked. It can be shown again via `KeyShowMouse` keybind. | 0 | 0 | 1 |
 | `W` | int<br>pixels | Window width. | 800 | 1 | 32768 |
 | `H` | int<br>pixels | Window height. | 600 | 1 | 32768 |
@@ -47,24 +47,24 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 | `FontNum` | int | The number of glyphs contained in the font file.<br>See [Fonts](#fonts). | 57 | 1 | 32768 |
 | `FontCols` | int | The number of columns the glyphs are grouped into.<br>See [Fonts](#fonts). | 8 | 1 | 32768 |
 | `FontRows` | int | The number of rows the glyphs are grouped into.<br>See [Fonts](#fonts). | 8 | 1 | 32768 |
-| `MinRandPeriod` | int<br>frames | Minimum time between glyph randomization. | 200 | 1 | 32768 |
-| `MaxRandPeriod` | int<br>frames | Maximum time between glyph randomization. | 400 | 1 | 32768 |
-| `PowRandPeriod` | int | Maximum steps of time between glyph randomization pow'ing. | 8 | 0 | 32768 |
-| `PowMulRandPeriod` | int<br>frames | Each pow'ing step time is multiplied by this. | 5 | 1 | 32768 |
-| `PowDivRandPeriod` | int<br>frames | Each pow'ing step time is divided by this. | 4 | 1 | 32768 |
-| `MinDropPeriod` | int<br>frames | Minimum period between falling drops. | 200 | 1 | 32768 |
-| `MaxDropPeriod` | int<br>frames | Maximum period between falling drops. | 400 | 1 | 32768 |
-| `OnlyIntPeriod` | bool | If enabled, the drop period will be rounded to an integer ratio. | 1 | 0 | 1 |
-| `TrailLen` | int<br>0.01% | Average trail length relative to window height. Faster drops have longer trails. | 8000 | 0 | 32768 |
-| `MinTrailLen` | int<br>chars | Minimum trail length. | 6 | 0 | 32768 |
-| `BlurGauss` | int<br>pixels | Gaussian blur factor. | 12 | 1 | 256 |
-| `BlurLinear` | int<br>pixels | Linear blur factor. | 3 | 1 | 32768 |
+| `RandMin` | int<br>frames | Minimum time between glyph randomization. | 200 | 1 | 32768 |
+| `RandMax` | int<br>frames | Maximum time between glyph randomization. | 400 | 1 | 32768 |
+| `RandPow` | int | Maximum steps of pow'ing. | 8 | 0 | 32768 |
+| `RandMul` | int<br>frames | Each pow'ing step the time is multiplied by this. | 5 | 1 | 32768 |
+| `RandDiv` | int<br>frames | Each pow'ing step the time is divided by this. | 4 | 1 | 32768 |
+| `DropMin` | int<br>frames | Minimum period between falling drops. | 200 | 1 | 32768 |
+| `DropMax` | int<br>frames | Maximum period between falling drops. | 400 | 1 | 32768 |
+| `OnlyInt` | bool | If enabled, the drop period will be rounded to an integer ratio. | 1 | 0 | 1 |
+| `Trail` | int<br>0.01% | Average trail length relative to window height. Faster drops have longer trails. | 8000 | 0 | 32768 |
+| `MinTrail` | int<br>chars | Minimum trail length. | 6 | 0 | 32768 |
+| `Gauss` | int<br>pixels | Gaussian blur factor. | 12 | 1 | 256 |
+| `Linear` | int<br>pixels | Linear blur factor. | 3 | 1 | 32768 |
 | `BlurAlpha` | int<br>0.01% | The brightness of the blur. | 5000 | 0 | INT_MAX |
 | `BlurPow` | int<br>0.01% | The power applied to the blur. Higher values result in a sharper blur. | 10000 | 0 | INT_MAX |
-| `BlurNoise` | int<br>0.01% | The amount of noise in the blur. | 2000 | 0 | 10000 |
-| `ColorResX` | int<br>0.01% | X resolution of the color map. | 1 | 1 | 32 |
-| `ColorResY` | int<br>0.01% | Y resolution of the color map. | 1 | 1 | 32 |
-| `ColorResZ` | int<br>0.01% | Z resolution of the color map. | 1 | 1 | 32 |
+| `Noise` | int<br>0.01% | The strength of blur noise. | 2000 | 0 | 10000 |
+| `ColorX` | int<br>0.01% | X resolution of the color map. | 1 | 1 | 32 |
+| `ColorY` | int<br>0.01% | Y resolution of the color map. | 1 | 1 | 32 |
+| `ColorZ` | int<br>0.01% | Z resolution of the color map. | 1 | 1 | 32 |
 | `R{X}.{Y}.{Z}` | int | Red component of the color map pixel.<br>See [Color map](#color-map). | | 0 | 255 |
 | `G{X}.{Y}.{Z}` | int | Green component of the color map pixel.<br>See [Color map](#color-map). | | 0 | 255 |
 | `B{X}.{Y}.{Z}` | int | Blue component of the color map pixel.<br>See [Color map](#color-map). | | 0 | 255 |
@@ -92,7 +92,7 @@ Hex0.0.1=D0FFC0 # Active characters
 
 ## Fonts
 ![src/font.png](src/font.png) \
-*`src/font.png`, embedded into the executable*
+*`src/font.png`, embedded into the executable.*
 
 Font is a MSDF (Multi-channel Signed Distance Field) and must be PNG images. \
 Glyphs should be laid out from left to right and top to bottom. \

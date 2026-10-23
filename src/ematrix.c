@@ -26,9 +26,9 @@
 extern const unsigned char _binary_src_font_png_start[];
 extern const unsigned char _binary_src_font_png_end[];
 
-static uint8_t cColors[(MAX_COLOR_RES_Z + 1) *
-                        MAX_COLOR_RES_X *
-                        MAX_COLOR_RES_Y * 3];
+static uint8_t cColor[(MAX_COLOR_RES_Z + 1) *
+                       MAX_COLOR_RES_X *
+                       MAX_COLOR_RES_Y * 3];
 
 static bool gGlfwInited = false;
 static GLFWwindow* gWindow = NULL;
@@ -94,12 +94,12 @@ typedef struct
 #define INT_CONFIG_DEF(name, min, max) { #name, &(c##name), min, max }
 static int_config_def_t INT_CONFIG_DEFS[] = 
 {
-    INT_CONFIG_DEF(LogLevel, 0, 3),
-    INT_CONFIG_DEF(Fullscreen, -1, 32678),
-    INT_CONFIG_DEF(FullscreenW, 0, 32678),
-    INT_CONFIG_DEF(FullscreenH, 0, 32678),
-    INT_CONFIG_DEF(Resizable, 0, 1),
-    INT_CONFIG_DEF(AutoIconify, 0, 1),
+    INT_CONFIG_DEF(Log, 0, 3),
+    INT_CONFIG_DEF(Screen, -1, 32678),
+    INT_CONFIG_DEF(ScreenW, 0, 32678),
+    INT_CONFIG_DEF(ScreenH, 0, 32678),
+    INT_CONFIG_DEF(Resize, 0, 1),
+    INT_CONFIG_DEF(AutoIcon, 0, 1),
     INT_CONFIG_DEF(HideMouse, 0, 1),
     INT_CONFIG_DEF(W, 1, 32768),
     INT_CONFIG_DEF(H, 1, 32768),
@@ -110,24 +110,24 @@ static int_config_def_t INT_CONFIG_DEFS[] =
     INT_CONFIG_DEF(FontNum, 1, 32768),
     INT_CONFIG_DEF(FontCols, 1, 32768),
     INT_CONFIG_DEF(FontRows, 1, 32768),
-    INT_CONFIG_DEF(MinRandPeriod, 1, 32768),
-    INT_CONFIG_DEF(MaxRandPeriod, 1, 32768),
-    INT_CONFIG_DEF(PowRandPeriod, 0, 32768),
-    INT_CONFIG_DEF(PowMulRandPeriod, 1, 32768),
-    INT_CONFIG_DEF(PowDivRandPeriod, 1, 32768),
-    INT_CONFIG_DEF(MinDropPeriod, 1, 32768),
-    INT_CONFIG_DEF(MaxDropPeriod, 1, 32768),
-    INT_CONFIG_DEF(OnlyIntPeriod, 0, 1),
-    INT_CONFIG_DEF(TrailLen, 0, 32768),
-    INT_CONFIG_DEF(MinTrailLen, 0, 32768),
-    INT_CONFIG_DEF(BlurGauss, 1, 256),
-    INT_CONFIG_DEF(BlurLinear, 1, 32768),
+    INT_CONFIG_DEF(RandMin, 1, 32768),
+    INT_CONFIG_DEF(RandMax, 1, 32768),
+    INT_CONFIG_DEF(RandPow, 0, 32768),
+    INT_CONFIG_DEF(RandMul, 1, 32768),
+    INT_CONFIG_DEF(RandDiv, 1, 32768),
+    INT_CONFIG_DEF(DropMin, 1, 32768),
+    INT_CONFIG_DEF(DropMax, 1, 32768),
+    INT_CONFIG_DEF(OnlyInt, 0, 1),
+    INT_CONFIG_DEF(Trail, 0, 32768),
+    INT_CONFIG_DEF(MinTrail, 0, 32768),
+    INT_CONFIG_DEF(Gauss, 1, 256),
+    INT_CONFIG_DEF(Linear, 1, 32768),
     INT_CONFIG_DEF(BlurAlpha, 0, INT_MAX),
     INT_CONFIG_DEF(BlurPow, 0, INT_MAX),
-    INT_CONFIG_DEF(BlurNoise, 0, 10000),
-    INT_CONFIG_DEF(ColorResX, 1, MAX_COLOR_RES_X),
-    INT_CONFIG_DEF(ColorResY, 1, MAX_COLOR_RES_Y),
-    INT_CONFIG_DEF(ColorResZ, 1, MAX_COLOR_RES_Z),
+    INT_CONFIG_DEF(Noise, 0, 10000),
+    INT_CONFIG_DEF(ColorX, 1, MAX_COLOR_RES_X),
+    INT_CONFIG_DEF(ColorY, 1, MAX_COLOR_RES_Y),
+    INT_CONFIG_DEF(ColorZ, 1, MAX_COLOR_RES_Z),
     INT_CONFIG_DEF(KeyFullscreen, INT_MIN, INT_MAX),
     INT_CONFIG_DEF(KeyShowMouse, INT_MIN, INT_MAX),
 };
@@ -145,8 +145,8 @@ static str_config_def_t STR_CONFIG_DEFS[] =
     STR_CONFIG_DEF(Title),
 };
 
-#define Log(fmt, ...) do { if (cLogLevel >= 3) printf(          fmt, ##__VA_ARGS__); } while(0)
-#define Err(fmt, ...) do { if (cLogLevel >= 1) printf("ERROR: " fmt, ##__VA_ARGS__); } while(0)
+#define Log(fmt, ...) do { if (cLog >= 3) printf(          fmt, ##__VA_ARGS__); } while(0)
+#define Err(fmt, ...) do { if (cLog >= 1) printf("ERROR: " fmt, ##__VA_ARGS__); } while(0)
 
 #if defined(__clang__) || defined(__GNUC__)
     #define NORETURN __attribute__((noreturn))
@@ -275,7 +275,7 @@ static void EnsureBufferSize(int size)
 
 static inline uint8_t* ColorAt(int x, int y, int z)
 {
-    return (cColors + ((z * cColorResY + y) * cColorResX + x) * 3);
+    return (cColor + (z*cColorY*cColorX + y*cColorX + x) * 3);
 }
 
 static inline void SetColor(int x, int y, int z, // Used by DEFAULT_COLOR
@@ -774,28 +774,28 @@ static inline matrix_char_t* MatrixCharAt(int x, int y)
 }
 static inline int MatrixGenRandPeriod(void)
 {
-    int ret = RandRange(cMinRandPeriod, cMaxRandPeriod);
-    int toMul = Rand(cPowRandPeriod + 1);
+    int ret = RandRange(cRandMin, cRandMax);
+    int toMul = Rand(cRandPow + 1);
     int toDiv = toMul;
     while (toMul-- > 0)
     {
-        while (toDiv > 0 && ret > (INT_MAX / cPowMulRandPeriod))
+        while (toDiv > 0 && ret > (INT_MAX / cRandMul))
         {
-            ret /= cPowDivRandPeriod;
+            ret /= cRandDiv;
             toDiv--;
         }
-        ret *= cPowMulRandPeriod;
+        ret *= cRandMul;
     }
     while (toDiv-- > 0)
     {
-        ret /= cPowDivRandPeriod;
+        ret /= cRandDiv;
     }
     return ret;
 }
 static inline int MatrixGenDropPeriod(void)
 {
-    int ret = RandRange(cMinDropPeriod, cMaxDropPeriod);
-    if (cOnlyIntPeriod)
+    int ret = RandRange(cDropMin, cDropMax);
+    if (cOnlyInt)
     {
         if (ret >= 75)
         {
@@ -839,7 +839,7 @@ static void MatrixResize(int w, int h)
         for (int x = 0; x < gMatrixW; x++)
         {
             matrix_char_t* c = MatrixCharAt(x, y);
-            c->randctr = Rand(cMaxRandPeriod);
+            c->randctr = MatrixGenRandPeriod();
             c->glyph = Rand(cFontNum);
             c->ctr = 0;
         }
@@ -868,12 +868,12 @@ static void MatrixUpdate(void)
 {
     assert(gMatrixW > 0 && gMatrixH > 0);
 
-    int trailLen = (gMatrixH * cTrailLen / 10000);
-    if (trailLen < cMinTrailLen)
+    int trailLen = (gMatrixH * cTrail / 10000);
+    if (trailLen < cMinTrail)
     {
-        trailLen = cMinTrailLen;
+        trailLen = cMinTrail;
     }
-    int fadeTime = (trailLen * (cMinDropPeriod + cMaxDropPeriod) / 200);
+    int fadeTime = (trailLen * (cDropMin + cDropMax) / 200);
     for (int x = 0; x < gMatrixW; x++)
     {
         matrix_drop_t* d = MatrixDropAt(x);
@@ -908,7 +908,7 @@ static void MatrixUpdate(void)
     // (cColorResZ + 1) / (cColorResZ + 2 + 1)
     //               ^1                 ^2  ^3
     float mulZ = 1.0F / (GLfloat)fadeTime *
-                 (GLfloat)(cColorResZ+1) / (GLfloat)(cColorResZ+3);
+                 (GLfloat)(cColorZ+1) / (GLfloat)(cColorZ+3);
     int size = (gMatrixW * gMatrixH * 3 * sizeof(GLfloat));
     EnsureBufferSize(size);
     GLfloat* buf = (GLfloat*)gBuffer;
@@ -997,8 +997,8 @@ static void ResizeCallback(GLFWwindow* window, int w, int h)
 
     if (gHasBlur)
     {
-        gFrameW = (gWindowW / cBlurLinear);
-        gFrameH = (gWindowH / cBlurLinear);
+        gFrameW = (gWindowW / cLinear);
+        gFrameH = (gWindowH / cLinear);
         if (gFrameW < 1)
         {
             gFrameW = 1;
@@ -1057,8 +1057,8 @@ static void ToggleFullscreen(GLFWmonitor* monitor)
     }
     else
     {
-        int w = cFullscreenW;
-        int h = cFullscreenH;
+        int w = cScreenW;
+        int h = cScreenH;
         if (w <= 0 || h <= 0)
         {
             const GLFWvidmode* video = glfwGetVideoMode(monitor);
@@ -1083,7 +1083,7 @@ static void KeyCallback(GLFWwindow* window, int key, int scancode,
     (void)window; (void)scancode; (void)mods;
     if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
-        if (key == cKeyFullscreen && cResizable)
+        if (key == cKeyFullscreen && cResize)
         {
             int mon = 0;
             for (int i = 0; i < 9; i++)
@@ -1141,7 +1141,7 @@ int main(int argc, char** argv)
             ParseFile(arg);
         }
     }
-    if (cLogLevel >= 2)
+    if (cLog >= 2)
     {
         printf("%s v1.0+dev by Megospc\n", (argc < 1 ? "ematrix" : argv[0]));
 #ifndef NDEBUG
@@ -1169,8 +1169,8 @@ int main(int argc, char** argv)
         gGlyphLut[i*2+0] = (GLfloat)col / (GLfloat)cFontCols;
         gGlyphLut[i*2+1] = (GLfloat)row / (GLfloat)cFontRows;
     }
-    gHasGaussBlur = (cBlurGauss > 1 && cBlurAlpha > 0);
-    gHasLinearBlur = (cBlurLinear > 1 && cBlurAlpha > 0);
+    gHasGaussBlur  = (cGauss  > 1 && cBlurAlpha > 0);
+    gHasLinearBlur = (cLinear > 1 && cBlurAlpha > 0);
     gHasBlur = (gHasGaussBlur || gHasLinearBlur);
 
     if (!glfwInit())
@@ -1180,8 +1180,8 @@ int main(int argc, char** argv)
     }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_RESIZABLE, cResizable);
-    glfwWindowHint(GLFW_AUTO_ICONIFY, cAutoIconify);
+    glfwWindowHint(GLFW_RESIZABLE, cResize);
+    glfwWindowHint(GLFW_AUTO_ICONIFY, cAutoIcon);
     gWindow = glfwCreateWindow(cW, cH, cTitle, NULL, NULL);
     if (!gWindow)
     {
@@ -1189,10 +1189,10 @@ int main(int argc, char** argv)
         Fail();
     }
     GLFWmonitor* monitor = NULL;
-    if (cFullscreen >= 0)
+    if (cScreen >= 0)
     {
         int total;
-        monitor = GetMonitor(cFullscreen, &total);
+        monitor = GetMonitor(cScreen, &total);
         if (monitor)
         {
             ToggleFullscreen(monitor);
@@ -1200,7 +1200,7 @@ int main(int argc, char** argv)
         else
         {
             Err("Invalid monitor %d: this device only has %d\n",
-                cFullscreen, total);
+                cScreen, total);
             Fail();
         }
     }
@@ -1240,17 +1240,17 @@ int main(int argc, char** argv)
             "void main()\n"
             "{\n");
         
-        GLfloat ws[cBlurGauss];
+        GLfloat ws[cGauss];
         GLfloat sw = 0.0F;
-        GLfloat sigma = (GLfloat)cBlurGauss / 3.0F;
-        for (int i = 0; i < cBlurGauss; i++)
+        GLfloat sigma = (GLfloat)cGauss / 3.0F;
+        for (int i = 0; i < cGauss; i++)
         {
-            GLfloat x = (GLfloat)i / (GLfloat)(cBlurGauss - 1);
+            GLfloat x = (GLfloat)i / (GLfloat)(cGauss - 1);
             GLfloat w = expf(-(x * x) / (2.0F * sigma * sigma));
             ws[i] = w;
             sw += w;
         }
-        for (int i = 0; i < cBlurGauss; i++)
+        for (int i = 0; i < cGauss; i++)
         {
             GLfloat w = (ws[i] / sw);
             Log("Gauss weight%d=%f\n", i, w);
@@ -1292,9 +1292,9 @@ int main(int argc, char** argv)
             ShaderSourceAppend(&gFragment3, &gFragment3Len, " * %f",
                 (GLfloat)cBlurAlpha / 10000.0F);
         }
-        if (cBlurNoise > 0)
+        if (cNoise > 0)
         {
-            float n = (GLfloat)cBlurNoise / 10000.0F;
+            float n = (GLfloat)cNoise / 10000.0F;
             ShaderSourceAppend(&gFragment3, &gFragment3Len,
                 " * (fract(sin(dot(vTexPos/uPx, vec2(12.9898, 78.233))) * 43758.5453123) * %f + %f)",
                 n, 1.0F-n);
@@ -1409,15 +1409,15 @@ int main(int argc, char** argv)
     GlCheckpoint("FontTexture");
     free(pixels);
 
-    EnsureBufferSize(cColorResX * cColorResY * (cColorResZ+2) * 4);
+    EnsureBufferSize(cColorX * cColorY * (cColorZ + 2) * 4);
     uint8_t* buf = (uint8_t*)gBuffer;
-    for (int z = 0; z < cColorResZ+2; z++)
+    for (int z = 0; z < (cColorZ + 2); z++)
     {
-        for (int y = 0; y < cColorResY; y++)
+        for (int y = 0; y < cColorY; y++)
         {
-            for (int x = 0; x < cColorResX; x++)
+            for (int x = 0; x < cColorX; x++)
             {
-                uint8_t* b = &buf[((z * cColorResY + y) * cColorResX + x) * 4];
+                uint8_t* b = &buf[(z*cColorY*cColorX + y*cColorX + x) * 4];
                 if (z == 0)
                 {
                     for (int i = 0; i < 3; i++)
@@ -1445,7 +1445,7 @@ int main(int argc, char** argv)
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, cColorResX, cColorResY, cColorResZ+2,
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, cColorX, cColorY, (cColorZ + 2),
                  0, GL_RGBA, GL_UNSIGNED_BYTE, gBuffer);
     GlCheckpoint("ColorsTexture");
     
