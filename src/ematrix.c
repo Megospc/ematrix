@@ -457,6 +457,11 @@ static void ParseLine(char* line, const char* file, int lineIndex)
         return;
     }
 
+    if (ParseLineCompareKey(line, "echo", -1))
+    {
+        printf("%s\n", value);
+        return;
+    }
     for (int i = 0; i < lengthof(INT_CONFIG_DEFS); i++)
     {
         int_config_def_t* d = &INT_CONFIG_DEFS[i];

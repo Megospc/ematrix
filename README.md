@@ -43,7 +43,7 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 | `Border` | int<br>pixels | Empty gap from window borders. | 4 | 0 | 32768 |
 | `Stretch` | bool | Allows glyphs to be stretched for an ideal fit. | 1 | 0 | 1 |
 | `VSync` | int | If set to 0, VSync is disabled. other values act as a divisor for the monitor's frame rate. Can be ignored if the GPU does not support VSync. | 1 | 0 | 32768 |
-| `Font` | string<br>path | Path to a font file (PNG MSDF).<br>See [Fonts](#fonts). | `"embed://font.png"` | | |
+| `Font` | string<br>path | Path to a font file (PNG MSDF).<br>See [Fonts](#fonts). | `"embed://font.png"` |
 | `FontNum` | int | The number of glyphs contained in the font file.<br>See [Fonts](#fonts). | 57 | 1 | 32768 |
 | `FontCols` | int | The number of columns the glyphs are grouped into.<br>See [Fonts](#fonts). | 8 | 1 | 32768 |
 | `FontRows` | int | The number of rows the glyphs are grouped into.<br>See [Fonts](#fonts). | 8 | 1 | 32768 |
@@ -73,6 +73,7 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 | `KeyFullscreen` | int<br>GLFW key | Keybinding for fullscreen mode. | 300 (F11) | | |
 | `KeyShowMouse` | int<br>GLFW key | Keybinding to show the mouse (which can be hidden via `HideMouse`). | 256 (Escape) | | |
 | `KeyQuit` | int<br>GLFW key | Keybinding to quit the application. | 81 (Q) | | |
+| `Echo` | string | **Command.** Prints value to stdout. | | | |
 
 *All keys are case-insensitive. You can also add spaces and dashes (`-`) anywhere within a key.* \
 *Boolean fields are represented as integers (`0` or `1`) rather than `false` or `true`.* \
