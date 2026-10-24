@@ -767,18 +767,6 @@ static void GlCheckpoint(const char* name)
     }
 }
 
-/*
-PIPELINE WITH BLUR:    OpenGL 3.0
-    OPERATION            | ROLES
-    prog1         -> fb1 | Render chars
-    prog2 fb1     -> fb2 | Blur by X & Downsample (fb2 is smaller)
-    prog3 fb1 fb2 -> fb0 | Blur by Y & Mix fb1 with fb2
-
-PIPELINE WITHOUT BLUR: OpenGL 2.0
-    OPERATION            | ROLES
-    prog1         -> fb0 | Render chars
-*/
-
 static const char VERTEX1[] =
     "#version 330 core\n"
     "layout (location = 0) in vec2 aVert;\n"
@@ -1024,12 +1012,6 @@ static void MatrixUpdate(void)
     {
         fadeTime = 1;
     }
-    // (1) The first Z plane is reserved for background
-    // (2) The last Z plane is reserved for active chars
-    // (3) In shader, float potition 1.0 matches int size+0.5
-    // So, Z of last normal plane is:
-    // (cColorResZ + 1) / (cColorResZ + 2 + 1)
-    //               ^1                 ^2  ^3
     float mulZ = 1.0F / (GLfloat)fadeTime *
                  (GLfloat)(cColorZ+1) / (GLfloat)(cColorZ+3);
     int size = (gMatrixW * gMatrixH * 3 * sizeof(GLfloat));
