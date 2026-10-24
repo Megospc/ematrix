@@ -38,7 +38,7 @@ typedef struct
 
 static uint8_t cColor[(MAX_COLOR_RES_Z + 1) *
                        MAX_COLOR_RES_X *
-                       MAX_COLOR_RES_Y * 3];
+                       MAX_COLOR_RES_Y * 3] = { 0 };
 
 static bool gGlfwInited = false;
 static GLFWwindow* gWindow = NULL;
@@ -301,7 +301,8 @@ static void BufferEnsure(buffer_t* buf, int size, bool saveContent)
 
 static inline uint8_t* ColorAt(int x, int y, int z)
 {
-    return (cColor + (z*cColorY*cColorX + y*cColorX + x) * 3);
+    return &cColor[(z * MAX_COLOR_RES_X * MAX_COLOR_RES_Y +
+                    y * MAX_COLOR_RES_X + x) * 3];
 }
 
 static inline void SetColor(int x, int y, int z, // Used by DEFAULT_COLOR
