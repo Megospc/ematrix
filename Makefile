@@ -18,16 +18,18 @@ else
 	UPX_COMMAND :=
 endif
 
+ifeq ($(wildcard test/test.conf),)
+	TEST ?= test/test.conf
+else
+	TEST ?=
+endif
+
 .PHONY: all clean test install uninstall
 all: build/ematrix
 clean:
 	rm -rf build
 test: build/ematrix
-	if [ -f test.conf ]; then \
-		./build/ematrix test.conf; \
-	else \
-		./build/ematrix; \
-	fi
+	./build/ematrix $(TEST)
 install: build/ematrix
 	cp build/ematrix /usr/local/bin
 	chmod 755 /usr/local/bin/ematrix
@@ -63,5 +65,4 @@ build/embed.o: $(EMBED) embed | build
 
 build/ematrix: src/ematrix.c src/config.c build/embed.o | build
 	$(CC) $(CFLAGS) -Wall -Wextra src/ematrix.c build/embed.o \
-		-lglfw -lm -o build/ematrix; \
-	$(UPX_COMMAND) 
+		-lglfw -lm -o build/ematrix; $(UPX_COMMAND) 

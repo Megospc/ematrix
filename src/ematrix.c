@@ -49,8 +49,6 @@ static GLuint gFramebuffers[2] = { 0 };
 static GLuint gFrameTextures[2] = { 0 };
 static GLuint gFontTexture = 0;
 static GLuint gColorsTexture = 0;
-static char* gBuffer = NULL; // General purpose buffer
-static int gBufferSize = 0;
 static GLfloat* gGlyphLut = NULL; // Texture positions for each glyph
 static bool gHasGaussBlur;
 static bool gHasLinearBlur;
@@ -63,6 +61,19 @@ static int gWindowW;
 static int gWindowH;
 static int gFrameW;
 static int gFrameH;
+
+typedef struct
+{
+    char* data;
+    int size;
+} buffer_t;
+static buffer_t g1 = { 0 };
+
+static void FreeBuffer(buffer_t* buf)
+{
+    free(buf->data);
+    buf->data = NULL;
+}
 
 static char* gFragment2 = NULL;
 static int gFragment2Len = 0;
@@ -154,18 +165,12 @@ static str_config_def_t STR_CONFIG_DEFS[] =
 #define Log(fmt, ...) do { if (cLog >= 3) printf(          fmt, ##__VA_ARGS__); } while(0)
 #define Err(fmt, ...) do { if (cLog >= 1) printf("ERROR: " fmt, ##__VA_ARGS__); } while(0)
 
-#if defined(__clang__) || defined(__GNUC__)
-    #define NORETURN __attribute__((noreturn))
-#elif defined(_MSC_VER)
-    #define NORETURN __declspec(noreturn)
-#else
-    #define NORETURN
-#endif
+#define NORETURN __attribute__((noreturn))
 static NORETURN void Exit(int code)
 {
+    FreeBuffer(&g1);
     free(gMatrixChars);
     free(gMatrixDrops);
-    free(gBuffer);
     free(gFragment2);
     free(gFragment3);
     for (int i = 0; i < lengthof(STR_CONFIG_DEFS); i++)
@@ -255,26 +260,33 @@ static void* Realloc(void* buf, int size, const char* name)
     return ret;
 }
 
-static void EnsureBufferSize(int size)
+static void BufferEnsure(buffer_t* buf, int size, bool saveContent)
 {
-    if (gBufferSize < size)
+    if (buf->size < size)
     {
-        if (gBuffer)
+        if (buf->data)
         {
-            while (gBufferSize < size)
+            while (buf->size < size)
             {
-                gBufferSize *= BUFFER_RESIZE_MULTIPLY;
+                buf->size *= BUFFER_RESIZE_MULTIPLY;
             }
-            gBuffer = Realloc(gBuffer, gBufferSize, "gBuffer");
+            if (saveContent)
+            {
+                buf->data = Realloc(buf->data, buf->size, "g1");
+            }
+            else
+            {
+                buf->data = Malloc(buf->size, "g1");
+            }
         }
         else
         {
-            gBufferSize = BUFFER_INIT_SIZE;
-            while (gBufferSize < size)
+            buf->size = BUFFER_INIT_SIZE;
+            while (buf->size < size)
             {
-                gBufferSize *= BUFFER_RESIZE_MULTIPLY;
+                buf->size *= BUFFER_RESIZE_MULTIPLY;
             }
-            gBuffer = Malloc(gBufferSize, "gBuffer");
+            buf->data = Malloc(buf->size, "g1");
         }
     }
 }
@@ -430,7 +442,9 @@ static void ParseLineParseHex(const char* value, uint8_t* ret,
     }
 }
 
-static void ParseLine(char* line, const char* file, int lineIndex)
+static void ParseFile(const char* path, const char* atFile, int atLine);
+
+static void ParseLine(char* line, const char* atFile, int atLine)
 {
     const char* value = "";
     for (int i = 0; true; i++)
@@ -445,7 +459,7 @@ static void ParseLine(char* line, const char* file, int lineIndex)
             line[i] = '\0';
             break;
         }
-        if (c == ' ' || c == '=')
+        if (c == '=')
         {
             line[i] = '\0';
             value = (line + i + 1);
@@ -457,9 +471,43 @@ static void ParseLine(char* line, const char* file, int lineIndex)
         return;
     }
 
-    if (ParseLineCompareKey(line, "echo", -1))
+    if (ParseLineCompareKey(line, "Echo", -1))
     {
         printf("%s\n", value);
+        return;
+    }
+    if (ParseLineCompareKey(line, "Include", -1))
+    {
+        int len = 0;
+        for (int i = 0; true; i++)
+        {
+            char c = atFile[i];
+            if (c == '/')
+            {
+                len = i+1;
+            }
+            if (c == '\0')
+            {
+                break;
+            }
+        }
+        int valueLen = strlen(value);
+        char* path = (char*)malloc(len + valueLen + 1);
+        for (int i = 0; i < len; i++)
+        {
+            path[i] = atFile[i];
+        }
+        for (int i = 0; i <= valueLen; i++)
+        {
+            path[i+len] = value[i];
+        }
+        ParseFile(path, atFile, atLine);
+        free(path);
+        return;
+    }
+    if (ParseLineCompareKey(line, "IncludeAbs", -1))
+    {
+        ParseFile(value, atFile, atLine);
         return;
     }
     for (int i = 0; i < lengthof(INT_CONFIG_DEFS); i++)
@@ -470,7 +518,7 @@ static void ParseLine(char* line, const char* file, int lineIndex)
             continue;
         }
         *d->value = ParseLineParseInt(value, d->min, d->max,
-                                      line, file, lineIndex);
+                                      line, atFile, atLine);
         Log("int config: %s=%d\n", d->name, *d->value);
         return;
     }
@@ -493,23 +541,23 @@ static void ParseLine(char* line, const char* file, int lineIndex)
         return;
     }
     uint8_t* color;
-    if (ParseLineCompareColorKey(line, &color, "r", 0) ||
-        ParseLineCompareColorKey(line, &color, "g", 1) ||
-        ParseLineCompareColorKey(line, &color, "b", 2))
+    if (ParseLineCompareColorKey(line, &color, "R", 0) ||
+        ParseLineCompareColorKey(line, &color, "G", 1) ||
+        ParseLineCompareColorKey(line, &color, "B", 2))
     {
-        *color = ParseLineParseInt(value, 0, 255, line, file, lineIndex);
+        *color = ParseLineParseInt(value, 0, 255, line, atFile, atLine);
         Log("int config: %s=%d\n", line, *color);
         return;
     }
-    if (ParseLineCompareColorKey(line, &color, "hex", 0))
+    if (ParseLineCompareColorKey(line, &color, "Hex", 0))
     {
-        ParseLineParseHex(value, color, line, file, lineIndex);
+        ParseLineParseHex(value, color, line, atFile, atLine);
         Log("hex config: %s=%02X%02X%02X\n", line,
             color[0], color[1], color[2]);
         return;
     }
     
-    Err("Invalid key: '%s' at %s:%d\n", line, file, lineIndex);
+    Err("Invalid key: '%s' at %s:%d\n", line, atFile, atLine);
     Fail();
 }
 
@@ -540,26 +588,37 @@ static bool CheckEmbed(const char* path,
             return true;
         }
     }
-    Err("Failed to open embed file '%s'\n", path);
-    Fail();
+    return false;
 }
 
-static void ParseFile(const char* path)
+static void ParseFile(const char* path, const char* atFile, int atLine)
 {
     const uint8_t* embedStart = NULL;
     const uint8_t* embedEnd = NULL;
+    Log(atFile ?
+        "Including file: %s\n" :
+        "Loading file: %s\n", path);
     FILE* file = NULL;
     if (!CheckEmbed(path, &embedStart, &embedEnd))
     {
         file = fopen(path, "r");
         if (!file)
         {
-            Err("Failed to open file '%s'\n", path);
+            if (atFile)
+            {
+                Err("Failed to include file '%s' at %s:%d\n",
+                    path, atFile, atLine);
+            }
+            else
+            {
+                Err("Failed to open file '%s'\n", path);
+            }
             Fail();
         }
     }
     int i = 0;
-    int lineIndex = 1;
+    int line = 1;
+    buffer_t buf = { 0 };
     while (true)
     {
         char c;
@@ -578,24 +637,25 @@ static void ParseFile(const char* path)
             }
             c = (char)(*embedStart++);
         }
-        EnsureBufferSize(i+1);
+        BufferEnsure(&buf, i+1, (i > 0));
         if (c == '\n')
         {
-            gBuffer[i] = '\0';
-            ParseLine(gBuffer, path, lineIndex);
-            lineIndex++;
+            buf.data[i] = '\0';
+            ParseLine(buf.data, path, line);
+            line++;
             i = 0;
             continue;
         }
-        gBuffer[i] = c;
+        buf.data[i] = c;
         i++;
     }
     if (i > 0)
     {
-        EnsureBufferSize(i+1);
-        gBuffer[i] = '\0';
-        ParseLine(gBuffer, path, lineIndex);
+        BufferEnsure(&buf, i+1, true);
+        buf.data[i] = '\0';
+        ParseLine(buf.data, path, line);
     }
+    FreeBuffer(&buf);
     if (file)
     {
         fclose(file);
@@ -626,10 +686,10 @@ static GLuint CreateShader(const char* pname, const char* name,
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
     if (!status)
     {
-        EnsureBufferSize(GL_INFOLOG_BUFFER_SIZE);
-        glGetShaderInfoLog(shader, gBufferSize, NULL, gBuffer);
+        BufferEnsure(&g1, GLINFOLOG_BUFFER_SIZE, false);
+        glGetShaderInfoLog(shader, g1.size, NULL, g1.data);
         glDeleteShader(shader);
-        Err("Failed to compile shader %s:%s\n%s", pname, name, gBuffer);
+        Err("Failed to compile shader %s:%s\n%s", pname, name, g1.data);
         return 0;
     }
     return shader;
@@ -665,10 +725,10 @@ static GLuint CreateProgram(const char* pname,
     glGetProgramiv(prog, GL_LINK_STATUS, &status);
     if (!status)
     {
-        EnsureBufferSize(GL_INFOLOG_BUFFER_SIZE);
-        glGetProgramInfoLog(prog, gBufferSize, NULL, gBuffer);
+        BufferEnsure(&g1, GLINFOLOG_BUFFER_SIZE, false);
+        glGetProgramInfoLog(prog, g1.size, NULL, g1.data);
         glDeleteProgram(prog);
-        Err("Failed to link program %s\n%s", pname, gBuffer);
+        Err("Failed to link program %s\n%s", pname, g1.data);
         Fail();
     }
     return prog;
@@ -909,8 +969,8 @@ static void MatrixResize(int w, int h)
     }
 
     int size = (gMatrixW * gMatrixH * 2 * sizeof(GLfloat));
-    EnsureBufferSize(size);
-    GLfloat* buf = (GLfloat*)gBuffer;
+    BufferEnsure(&g1, size, false);
+    GLfloat* buf = (GLfloat*)g1.data;
     for (int y = 0; y < gMatrixH; y++)
     {
         for (int x = 0; x < gMatrixW; x++)
@@ -921,7 +981,7 @@ static void MatrixResize(int w, int h)
         }
     }
     glBindBuffer(GL_ARRAY_BUFFER, gBuffers[1]);
-    glBufferData(GL_ARRAY_BUFFER, size, gBuffer, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, size, g1.data, GL_DYNAMIC_DRAW);
     glUseProgram(gProgram1);
     glUniform2f(gProgram1uPosSize, 1.0F/(GLfloat)w, 1.0F/(GLfloat)h);
 }
@@ -973,8 +1033,8 @@ static void MatrixUpdate(void)
     float mulZ = 1.0F / (GLfloat)fadeTime *
                  (GLfloat)(cColorZ+1) / (GLfloat)(cColorZ+3);
     int size = (gMatrixW * gMatrixH * 3 * sizeof(GLfloat));
-    EnsureBufferSize(size);
-    GLfloat* buf = (GLfloat*)gBuffer;
+    BufferEnsure(&g1, size, false);
+    GLfloat* buf = (GLfloat*)g1.data;
     for (int y = 0; y < gMatrixH; y++)
     {
         for (int x = 0; x < gMatrixW; x++)
@@ -1006,7 +1066,7 @@ static void MatrixUpdate(void)
     }
     BENCH_END(MatrixUpdate);
     glBindBuffer(GL_ARRAY_BUFFER, gBuffers[2]);
-    glBufferData(GL_ARRAY_BUFFER, size, gBuffer, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, size, g1.data, GL_DYNAMIC_DRAW);
 }
 
 static void ResizeCallback(GLFWwindow* window, int w, int h)
@@ -1197,11 +1257,11 @@ int main(int argc, char** argv)
         char* arg = argv[i];
         if (arg[0] == '-')
         {
-            ParseLine(arg + 1, "arg", i);
+            ParseLine(arg + 1, "ARG", i);
         }
         else
         {
-            ParseFile(arg);
+            ParseFile(arg, NULL, 0);
         }
     }
     if (cLog >= 2)
@@ -1241,6 +1301,7 @@ int main(int argc, char** argv)
         Err("Failed to init glfw: %s\n", GetGlfwError());
         Fail();
     }
+    gGlfwInited = true;
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_RESIZABLE, cResize);
@@ -1329,7 +1390,7 @@ int main(int argc, char** argv)
         for (int i = 0; i < cGauss; i++)
         {
             GLfloat w = (ws[i] / sw);
-            Log("Gauss weight%d=%f\n", i, w);
+            Log("Gauss weight%d %f\n", i, w);
             if (i == 0)
             {
                 ShaderSourceAppend(&gFragment2, &gFragment2Len,
@@ -1477,8 +1538,8 @@ int main(int argc, char** argv)
     GlCheckpoint("FontTexture");
     free(pixels);
 
-    EnsureBufferSize(cColorX * cColorY * (cColorZ + 2) * 4);
-    uint8_t* buf = (uint8_t*)gBuffer;
+    BufferEnsure(&g1, cColorX * cColorY * (cColorZ + 2) * 4, false);
+    uint8_t* buf = (uint8_t*)g1.data;
     for (int z = 0; z < (cColorZ + 2); z++)
     {
         for (int y = 0; y < cColorY; y++)
@@ -1514,7 +1575,7 @@ int main(int argc, char** argv)
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, cColorX, cColorY, (cColorZ + 2),
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, gBuffer);
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, g1.data);
     GlCheckpoint("ColorsTexture");
     
     ResizeCallback(gWindow, cW, cH);
