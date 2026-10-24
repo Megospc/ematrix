@@ -588,7 +588,9 @@ static bool CheckEmbed(const char* path,
             return true;
         }
     }
-    return false;
+    *start = NULL;
+    *end   = NULL;
+    return true;
 }
 
 static void ParseFile(const char* path, const char* atFile, int atLine)
@@ -598,23 +600,25 @@ static void ParseFile(const char* path, const char* atFile, int atLine)
     Log(atFile ?
         "Including file: %s\n" :
         "Loading file: %s\n", path);
+    bool isEmbed = CheckEmbed(path, &embedStart, &embedEnd);
     FILE* file = NULL;
-    if (!CheckEmbed(path, &embedStart, &embedEnd))
+    if (!isEmbed)
     {
         file = fopen(path, "r");
-        if (!file)
+    }
+    if ((!isEmbed && !file) ||
+        ( isEmbed && !embedStart))
+    {
+        if (atFile)
         {
-            if (atFile)
-            {
-                Err("Failed to include file '%s' at %s:%d\n",
-                    path, atFile, atLine);
-            }
-            else
-            {
-                Err("Failed to open file '%s'\n", path);
-            }
-            Fail();
+            Err("Failed to include file '%s' at %s:%d\n",
+                path, atFile, atLine);
         }
+        else
+        {
+            Err("Failed to open file '%s'\n", path);
+        }
+        Fail();
     }
     int i = 0;
     int line = 1;
@@ -1493,17 +1497,17 @@ int main(int argc, char** argv)
     const uint8_t* embedEnd;
     if (CheckEmbed(cFont, &embedStart, &embedEnd))
     {
+        Log("Loading embedded font: %s (%p:%p)\n",
+            cFont, embedStart, embedEnd);
         pixels = (uint32_t*)stbi_load_from_memory(
             embedStart,
             (int)(embedEnd - embedStart),
             &w, &h, &nc, 4);
-        Log("Loading embedded font: %s (%p:%p)\n",
-            cFont, embedStart, embedEnd);
     }
     else
     {
-        pixels = (uint32_t*)stbi_load(cFont, &w, &h, &nc, 4);
         Log("Loading font: %s\n", cFont);
+        pixels = (uint32_t*)stbi_load(cFont, &w, &h, &nc, 4);
     }
     if (!pixels)
     {
