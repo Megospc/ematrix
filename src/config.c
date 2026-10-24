@@ -46,6 +46,17 @@ static int cKeyQuit = GLFW_KEY_Q;
 static const char* cFont = "embed://1.png";
 static const char* cTitle = "ematrix";
 
+static const char* const DEFAULT_CONFIGS[] =
+{
+#ifdef OS_WINDOWS
+    "C:/ProgramData/ematrix.conf",
+    "~/AppData/Roaming/ematrix.conf",
+#else
+    "/etc/ematrix.conf",
+    "~/.config/ematrix.conf",
+#endif
+};
+
 #define WINDOWS_FALLBACK_HOME "C:/ProgramData/" // fallback home path for windows, trailing slash is REQUIRED
 #define FALLBACK_HOME "/etc/" // fallback home path, trailing slash is REQUIRED
 

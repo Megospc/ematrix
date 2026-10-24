@@ -1353,6 +1353,13 @@ int main(int argc, char** argv)
 {
     DEFAULT_COLOR
 
+    for (int i = 0; i < lengthof(DEFAULT_CONFIGS); i++)
+    {
+        const char* path = ParsePath(DEFAULT_CONFIGS[i], "");
+        ParseFile(path, NULL, 0, true);
+        free((void*)path);
+    }
+
     for (int i = 1; i < argc; i++)
     {
         char* arg = argv[i];
@@ -1362,11 +1369,12 @@ int main(int argc, char** argv)
         }
         else
         {
-            const char* path = ParsePath(arg, "ARG");
+            const char* path = ParsePath(arg, "");
             ParseFile(path, NULL, 0, false);
             free((void*)path);
         }
     }
+
     if (cLog >= 2)
     {
         printf("%s v1.0+dev by Megospc\n", (argc < 1 ? "ematrix" : argv[0]));
