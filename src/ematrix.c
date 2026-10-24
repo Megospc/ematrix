@@ -895,7 +895,8 @@ static const char VERTEX1[] =
     "layout (location = 3) in float aZ;\n"
     "uniform vec2 uPosSize;\n"
     "uniform vec2 uTexPosSize;\n"
-    "uniform sampler3D tColors;\n"
+    "uniform vec3 uColorSize;\n"
+    "uniform sampler3D tColor;\n"
     "out vec2 vTexPos;\n"
     "out vec4 vColor;\n"
     "void main()\n"
@@ -905,7 +906,7 @@ static const char VERTEX1[] =
     "    gl_Position.y = -gl_Position.y;\n"
     "    vTexPos = aTexPos+aVert*uTexPosSize;\n"
     "    vec2 c = p*(1.0-uPosSize*1.0)+uPosSize*0.5;\n"
-    "    vColor = texture(tColors, vec3(c, aZ));\n"
+    "    vColor = texture(tColor, vec3(c, aZ)*(1.0-uColorSize)+uColorSize*0.5);\n"
     "}\n";
 static const char FRAGMENT1[] =
     "#version 330 core\n"
@@ -1132,8 +1133,7 @@ static void MatrixUpdate(void)
     {
         fadeTime = 1;
     }
-    float mulZ = 1.0F / (GLfloat)fadeTime *
-                 (GLfloat)(cColorZ+1) / (GLfloat)(cColorZ+3);
+    GLfloat mulZ = 0.5F / (GLfloat)fadeTime;
     int size = (gMatrixW * gMatrixH * 3 * sizeof(GLfloat));
     BufferEnsure(&g1, size, false);
     GLfloat* buf = (GLfloat*)g1.data;
@@ -1583,10 +1583,14 @@ int main(int argc, char** argv)
     gProgram1 = CreateProgram("1", VERTEX1, FRAGMENT1);
     glUseProgram(gProgram1);
     SetUniformInt(gProgram1, "tFont", 0);
-    SetUniformInt(gProgram1, "tColors", 1);
+    SetUniformInt(gProgram1, "tColor", 1);
     gProgram1uPosSize = glGetUniformLocation(gProgram1, "uPosSize");
     glUniform2f(glGetUniformLocation(gProgram1, "uTexPosSize"),
                 1.0F/(GLfloat)cFontCols, 1.0F/(GLfloat)cFontRows);
+    glUniform3f(glGetUniformLocation(gProgram1, "uColorSize"),
+                1.0F/(GLfloat)cColorX,
+                1.0F/(GLfloat)cColorY, 
+                1.0F/(GLfloat)(cColorZ + 2));
     GlCheckpoint("Program1");
 
     glGenVertexArrays(1, &gVertexArray);
