@@ -43,8 +43,8 @@ static int cColorZ = 1;
 static int cKeyFullscreen = GLFW_KEY_F11;
 static int cKeyShowMouse = GLFW_KEY_ESCAPE;
 static int cKeyQuit = GLFW_KEY_Q;
-static char* cFont = "embed://1.png";
-static char* cTitle = "ematrix";
+static const char* cFont = "embed://1.png";
+static const char* cTitle = "ematrix";
 
 // Idk why may you want to change these three
 #define GLINFOLOG_BUFFER_SIZE 4096 // maximum size of OpenGL error log

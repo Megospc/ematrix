@@ -75,7 +75,7 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 | `KeyQuit` | int<br>GLFW key | Keybinding to quit the application. | 81 (Q) | | |
 | `Echo` | string | **Command.** Prints value to stdout. | | | |
 | `Include` | string<br>path | **Command.** Parses the config file. | | | |
-| `IncludeAbs` | string<br>path | **Command.** Parses the config file. Path is relative by ematrix working directory. | | | |
+| `TryInclude` | string<br>path | **Command.** Parses the config file only if it exists. | | | |
 
 *All keys are case-insensitive. You can also add spaces and dashes (`-`) anywhere within a key.* \
 *Boolean fields are represented as integers (`0` or `1`) rather than `false` or `true`.* \

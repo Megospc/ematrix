@@ -19,6 +19,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "lib/stb_image.h"
 
+#if defined(__WIN32)
+    #define OS_WINDOWS
+#endif
+
 #include "config.c"
 
 typedef struct
@@ -152,14 +156,15 @@ static int_config_def_t INT_CONFIG_DEFS[] =
 typedef struct
 {
     const char* const name;
-    char** const value;
+    const char** const value;
+    const bool isPath;
     bool doFree;
 } str_config_def_t;
-#define STR_CONFIG_DEF(name) { #name, &(c##name), false }
+#define STR_CONFIG_DEF(name, path) { #name, &(c##name), path, false }
 static str_config_def_t STR_CONFIG_DEFS[] = 
 {
-    STR_CONFIG_DEF(Font),
-    STR_CONFIG_DEF(Title),
+    STR_CONFIG_DEF(Font, true),
+    STR_CONFIG_DEF(Title, false),
 };
 
 #define Log(fmt, ...) do { if (cLog >= 3) printf(          fmt, ##__VA_ARGS__); } while(0)
@@ -178,7 +183,7 @@ static NORETURN void Exit(int code)
         str_config_def_t* d = &STR_CONFIG_DEFS[i];
         if (d->doFree)
         {
-            free(*d->value);
+            free((void*)*d->value);
         }
     }
     if (gFontTexture)
@@ -303,6 +308,41 @@ static inline void SetColor(int x, int y, int z, // Used by DEFAULT_COLOR
     c[0] = r;
     c[1] = g;
     c[2] = b;
+}
+
+static bool CheckEmbed(const char* path,
+                       const uint8_t** start, const uint8_t** end)
+{
+    const char* pref = "embed://";
+    while (true)
+    {
+        if (*pref == '\0')
+        {
+            break;
+        }
+        if (*pref != *path)
+        {
+            return false;
+        }
+        pref++;
+        path++;
+    }
+    if (start && end)
+    {
+        for (int i = 0; i < lengthof(EMBED); i++)
+        {
+            const embed_def_t* d = &EMBED[i];
+            if (strcmp(path, d->path) == 0)
+            {
+                *start = d->start;
+                *end   = d->end;
+                return true;
+            }
+        }
+        *start = NULL;
+        *end   = NULL;
+    }
+    return true;
 }
 
 static bool ParseLineCompareKey(const char* a, const char* b, int l)
@@ -442,7 +482,63 @@ static void ParseLineParseHex(const char* value, uint8_t* ret,
     }
 }
 
-static void ParseFile(const char* path, const char* atFile, int atLine);
+static const char* ParseLineParsePath(const char* value, const char* atFile)
+{
+#ifdef OS_WINDOWS
+    if (value[0] != '\0' &&
+        value[1] == ':' &&
+        (value[2] == '/' || value[2] == '\\'))
+    {
+        atFile = "";
+    }
+    if ((value[0] == '/'  && value[1] == '/') ||
+        (value[0] == '\\' && value[1] == '\\'))
+    {
+        atFile = "";
+    }
+#else
+    if (value[0] == '/')
+    {
+        atFile = "";
+    }
+#endif
+    if (CheckEmbed(value, NULL, NULL))
+    {
+        atFile = "";
+    }
+
+    int len = 0;
+    for (int i = 0; true; i++)
+    {
+        char c = atFile[i];
+#ifdef OS_WINDOWS
+        if (c == '/' || c == '\\')
+#else
+        if (c == '/')
+#endif
+        {
+            len = i+1;
+        }
+        if (c == '\0')
+        {
+            break;
+        }
+    }
+    int valueLen = strlen(value);
+    char* ret = Malloc(len + valueLen + 1, "ParseLinePath");
+    for (int i = 0; i < len; i++)
+    {
+        ret[i] = atFile[i];
+    }
+    for (int i = 0; i <= valueLen; i++)
+    {
+        ret[i+len] = value[i];
+    }
+    return ret;
+}
+
+static void ParseFile(const char* path, const char* atFile, int atLine,
+                      bool noFail);
 
 static void ParseLine(char* line, const char* atFile, int atLine)
 {
@@ -478,36 +574,16 @@ static void ParseLine(char* line, const char* atFile, int atLine)
     }
     if (ParseLineCompareKey(line, "Include", -1))
     {
-        int len = 0;
-        for (int i = 0; true; i++)
-        {
-            char c = atFile[i];
-            if (c == '/')
-            {
-                len = i+1;
-            }
-            if (c == '\0')
-            {
-                break;
-            }
-        }
-        int valueLen = strlen(value);
-        char* path = (char*)malloc(len + valueLen + 1);
-        for (int i = 0; i < len; i++)
-        {
-            path[i] = atFile[i];
-        }
-        for (int i = 0; i <= valueLen; i++)
-        {
-            path[i+len] = value[i];
-        }
-        ParseFile(path, atFile, atLine);
-        free(path);
+        const char* path = ParseLineParsePath(value, atFile);
+        ParseFile(path, atFile, atLine, false);
+        free((void*)path);
         return;
     }
-    if (ParseLineCompareKey(line, "IncludeAbs", -1))
+    if (ParseLineCompareKey(line, "TryInclude", -1))
     {
-        ParseFile(value, atFile, atLine);
+        const char* path = ParseLineParsePath(value, atFile);
+        ParseFile(path, atFile, atLine, true);
+        free((void*)path);
         return;
     }
     for (int i = 0; i < lengthof(INT_CONFIG_DEFS); i++)
@@ -531,12 +607,20 @@ static void ParseLine(char* line, const char* atFile, int atLine)
         }
         if (d->doFree)
         {
-            free(*d->value);
+            free((void*)*d->value);
         }
-        int len = (strlen(value) + 1);
-        *d->value = Malloc(len, "configString");
+        if (d->isPath)
+        {
+            *d->value = ParseLineParsePath(value, atFile);
+        }
+        else
+        {
+            int len = (strlen(value) + 1);
+            char* buf = Malloc(len, "ParseLine");
+            memcpy(buf, value, len);
+            *d->value = buf;
+        }
         d->doFree = true;
-        memcpy(*d->value, value, len);
         Log("str config: %s=%s\n", d->name, *d->value);
         return;
     }
@@ -561,39 +645,8 @@ static void ParseLine(char* line, const char* atFile, int atLine)
     Fail();
 }
 
-static bool CheckEmbed(const char* path,
-                       const uint8_t** start, const uint8_t** end)
-{
-    const char* pref = "embed://";
-    while (true)
-    {
-        if (*pref == '\0')
-        {
-            break;
-        }
-        if (*pref != *path)
-        {
-            return false;
-        }
-        pref++;
-        path++;
-    }
-    for (int i = 0; i < lengthof(EMBED); i++)
-    {
-        const embed_def_t* d = &EMBED[i];
-        if (strcmp(path, d->path) == 0)
-        {
-            *start = d->start;
-            *end   = d->end;
-            return true;
-        }
-    }
-    *start = NULL;
-    *end   = NULL;
-    return true;
-}
-
-static void ParseFile(const char* path, const char* atFile, int atLine)
+static void ParseFile(const char* path, const char* atFile, int atLine,
+                      bool noFail)
 {
     const uint8_t* embedStart = NULL;
     const uint8_t* embedEnd = NULL;
@@ -609,6 +662,10 @@ static void ParseFile(const char* path, const char* atFile, int atLine)
     if ((!isEmbed && !file) ||
         ( isEmbed && !embedStart))
     {
+        if (noFail)
+        {
+            return;
+        }
         if (atFile)
         {
             Err("Failed to include file '%s' at %s:%d\n",
@@ -836,11 +893,11 @@ static void ShaderSourceAppend(char** source, int* len, const char* fmt, ...)
     *len += s;
     if (l > 0)
     {
-        *source = Realloc(*source, *len + 1, "shaderSource");
+        *source = Realloc(*source, *len + 1, "ShaderSourceAppend");
     }
     else
     {
-        *source = Malloc(*len + 1, "shaderSource");
+        *source = Malloc(*len + 1, "ShaderSourceAppend");
     }
     va_start(va, fmt);
     int z = vsnprintf((*source + l), (s + 1), fmt, va);
@@ -1247,7 +1304,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            ParseFile(arg, NULL, 0);
+            ParseFile(arg, NULL, 0, false);
         }
     }
     if (cLog >= 2)
