@@ -414,8 +414,8 @@ Hex0.0.1=D0FFC0 # Active characters
 ```
 
 ## Fonts
-![embed/font.png](embed/font.png) \
-*`embed/font.png`*
+![embed/1.png](embed/1.png) \
+*`embed/1.png`*
 
 Font is a MSDF (Multi-channel Signed Distance Field) and must be PNG images. \
 Glyphs should be laid out from left to right and top to bottom. \
