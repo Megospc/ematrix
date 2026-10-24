@@ -1378,7 +1378,7 @@ int main(int argc, char** argv)
 
     if (cLog >= 2)
     {
-        printf("%s v1.0+dev by Megospc\n", (argc < 1 ? "ematrix" : argv[0]));
+        printf("%s v1.1 by Megospc\n", (argc < 1 ? "ematrix" : argv[0]));
 #ifndef NDEBUG
         printf("DEBUG BUILD\n");
 #endif
