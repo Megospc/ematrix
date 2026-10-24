@@ -46,6 +46,9 @@ static int cKeyQuit = GLFW_KEY_Q;
 static const char* cFont = "embed://1.png";
 static const char* cTitle = "ematrix";
 
+#define WINDOWS_FALLBACK_HOME "C:/ProgramData/" // fallback home path for windows, trailing slash is REQUIRED
+#define FALLBACK_HOME "/etc/" // fallback home path, trailing slash is REQUIRED
+
 // Idk why may you want to change these three
 #define GLINFOLOG_BUFFER_SIZE 4096 // maximum size of OpenGL error log
 #define BUFFER_INIT_SIZE 4096 // initial size of dynamic buffer, min: 1

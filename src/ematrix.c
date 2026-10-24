@@ -21,6 +21,7 @@
 
 #if defined(__WIN32)
     #define OS_WINDOWS
+    #include <shlobj.h>
 #endif
 
 #include "config.c"
@@ -65,6 +66,7 @@ static int gWindowW;
 static int gWindowH;
 static int gFrameW;
 static int gFrameH;
+static const char* gHomePath = NULL;
 
 typedef struct
 {
@@ -178,6 +180,7 @@ static NORETURN void Exit(int code)
     free(gMatrixDrops);
     free(gFragment2);
     free(gFragment3);
+    free((void*)gHomePath);
     for (int i = 0; i < lengthof(STR_CONFIG_DEFS); i++)
     {
         str_config_def_t* d = &STR_CONFIG_DEFS[i];
@@ -345,6 +348,116 @@ static bool CheckEmbed(const char* path,
     return true;
 }
 
+static void GetHomePath()
+{
+    if (gHomePath)
+    {
+        return;
+    }
+#ifdef OS_WINDOWS
+    PWSTR appData;
+    HRESULT r = SHGetKnownFolderPath(&FOLDERID_Profile,
+                                        0, NULL, &appData);
+    if (!SUCCEEDED(r))
+    {
+        Log("Failed to get Home path, code: %d\n", (int)r);
+        gHomePath = WINDOWS_FALLBACK_HOME;
+        return;
+    }
+    int size = WideCharToMultiByte(CP_UTF8, 0, appData,
+        -1, NULL, 0, NULL, NULL);
+    if (size <= 0)
+    {
+        Log("Failed to convert Home path\n");
+        gHomePath = WINDOWS_FALLBACK_HOME;
+        return;
+    }
+    char* buf = Malloc((size + 1), "GetHomePath");
+    WideCharToMultiByte(CP_UTF8, 0, appData, -1, 
+        buf, size, NULL, NULL);
+    buf[size - 1] = '\\';
+    buf[size] = '\0';
+    gHomePath = (const char*)buf;
+#else
+    char* home = getenv("HOME");
+    if (!home)
+    {
+        Log("Failed to getenv HOME\n");
+        home = FALLBACK_HOME;
+        return;
+    }
+    int size = (strlen(home) + 1);
+    char* buf = Malloc((size + 1), "GetHomePath");
+    memcpy(buf, home, size);
+    buf[size - 1] = '/';
+    buf[size] = '\0';
+    gHomePath = (const char*)buf;
+#endif
+    Log("Home path: %s\n", gHomePath);
+}
+
+static const char* ParsePath(const char* value, const char* atFile)
+{
+#ifdef OS_WINDOWS
+    if (value[0] != '\0' &&
+        value[1] == ':' &&
+        (value[2] == '/' || value[2] == '\\'))
+    {
+        atFile = "";
+    }
+    if ((value[0] == '/'  && value[1] == '/') ||
+        (value[0] == '\\' && value[1] == '\\'))
+    {
+        atFile = "";
+    }
+#else
+    if (value[0] == '/')
+    {
+        atFile = "";
+    }
+#endif
+    if (CheckEmbed(value, NULL, NULL))
+    {
+        atFile = "";
+    }
+    if (value[0] == '~' &&
+        value[1] == '/')
+    {
+        value += 2;
+        GetHomePath();
+        atFile = gHomePath;
+    }
+
+    int len = 0;
+    for (int i = 0; true; i++)
+    {
+        char c = atFile[i];
+#ifdef OS_WINDOWS
+        if (c == '/' || c == '\\')
+#else
+        if (c == '/')
+#endif
+        {
+            len = i+1;
+        }
+        if (c == '\0')
+        {
+            break;
+        }
+    }
+    int valueLen = strlen(value);
+    char* ret = Malloc(len + valueLen + 1, "ParseLinePath");
+    for (int i = 0; i < len; i++)
+    {
+        ret[i] = atFile[i];
+    }
+    for (int i = 0; i <= valueLen; i++)
+    {
+        ret[i+len] = value[i];
+    }
+    return ret;
+}
+
 static bool ParseLineCompareKey(const char* a, const char* b, int l)
 {
     const char* pa = a;
@@ -482,61 +595,6 @@ static void ParseLineParseHex(const char* value, uint8_t* ret,
     }
 }
 
-static const char* ParseLineParsePath(const char* value, const char* atFile)
-{
-#ifdef OS_WINDOWS
-    if (value[0] != '\0' &&
-        value[1] == ':' &&
-        (value[2] == '/' || value[2] == '\\'))
-    {
-        atFile = "";
-    }
-    if ((value[0] == '/'  && value[1] == '/') ||
-        (value[0] == '\\' && value[1] == '\\'))
-    {
-        atFile = "";
-    }
-#else
-    if (value[0] == '/')
-    {
-        atFile = "";
-    }
-#endif
-    if (CheckEmbed(value, NULL, NULL))
-    {
-        atFile = "";
-    }
-
-    int len = 0;
-    for (int i = 0; true; i++)
-    {
-        char c = atFile[i];
-#ifdef OS_WINDOWS
-        if (c == '/' || c == '\\')
-#else
-        if (c == '/')
-#endif
-        {
-            len = i+1;
-        }
-        if (c == '\0')
-        {
-            break;
-        }
-    }
-    int valueLen = strlen(value);
-    char* ret = Malloc(len + valueLen + 1, "ParseLinePath");
-    for (int i = 0; i < len; i++)
-    {
-        ret[i] = atFile[i];
-    }
-    for (int i = 0; i <= valueLen; i++)
-    {
-        ret[i+len] = value[i];
-    }
-    return ret;
-}
-
 static void ParseFile(const char* path, const char* atFile, int atLine,
                       bool noFail);
 
@@ -574,14 +632,14 @@ static void ParseLine(char* line, const char* atFile, int atLine)
     }
     if (ParseLineCompareKey(line, "Include", -1))
     {
-        const char* path = ParseLineParsePath(value, atFile);
+        const char* path = ParsePath(value, atFile);
         ParseFile(path, atFile, atLine, false);
         free((void*)path);
         return;
     }
     if (ParseLineCompareKey(line, "TryInclude", -1))
     {
-        const char* path = ParseLineParsePath(value, atFile);
+        const char* path = ParsePath(value, atFile);
         ParseFile(path, atFile, atLine, true);
         free((void*)path);
         return;
@@ -611,7 +669,7 @@ static void ParseLine(char* line, const char* atFile, int atLine)
         }
         if (d->isPath)
         {
-            *d->value = ParseLineParsePath(value, atFile);
+            *d->value = ParsePath(value, atFile);
         }
         else
         {
@@ -1304,7 +1362,9 @@ int main(int argc, char** argv)
         }
         else
         {
-            ParseFile(arg, NULL, 0, false);
+            const char* path = ParsePath(arg, "ARG");
+            ParseFile(path, NULL, 0, false);
+            free((void*)path);
         }
     }
     if (cLog >= 2)

@@ -19,9 +19,9 @@ else
 endif
 
 ifeq ($(wildcard test/test.conf),)
-	TEST ?= test/test.conf
-else
 	TEST ?=
+else
+	TEST ?= test/test.conf
 endif
 
 .PHONY: all clean test install uninstall

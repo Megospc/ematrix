@@ -398,6 +398,7 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 
 *All keys are case-insensitive. You can also add spaces and dashes (`-`) anywhere within a key.* \
 *Boolean fields are represented as integers (`0` or `1`) rather than `false` or `true`.* \
+*Paths prefixed with `~/` are automatically resolved to the current user's home directory.*
 *Default values and MAX_COLOR_RES_\* can be modified in `src/config.c`.*
 
 ### Color map
