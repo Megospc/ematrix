@@ -6,8 +6,8 @@ Own files of ematrix (files not located in `src/lib/` directory) is distributed 
 
 ## Compiling
 + Install:
-    - A C99-compliant compiler and linker
-    - A POSIX-compliant `make`
+    - C99-compliant compiler and linker
+    - GNU `make`
     - [GLFW](https://github.com/glfw/glfw)
 + Open a terminal in this directory and run `make`. The executable will be located in the `build/` directory.
     - Alternatively, run `make test` to compile and run ematrix immediately.
@@ -43,7 +43,7 @@ You can pass options directly via the command-line argument `-key=value`, or spe
 | `Border` | int<br>pixels | Empty gap from window borders. | 4 | 0 | 32768 |
 | `Stretch` | bool | Allows glyphs to be stretched for an ideal fit. | 1 | 0 | 1 |
 | `VSync` | int | If set to 0, VSync is disabled. other values act as a divisor for the monitor's frame rate. Can be ignored if the GPU does not support VSync. | 1 | 0 | 32768 |
-| `Font` | string<br>path | Path to a font file (PNG MSDF). If left empty, the embedded ematrix font is used.<br>See [Fonts](#fonts). | `""` | | |
+| `Font` | string<br>path | Path to a font file (PNG MSDF).<br>See [Fonts](#fonts). | `"embed://font.png"` | | |
 | `FontNum` | int | The number of glyphs contained in the font file.<br>See [Fonts](#fonts). | 57 | 1 | 32768 |
 | `FontCols` | int | The number of columns the glyphs are grouped into.<br>See [Fonts](#fonts). | 8 | 1 | 32768 |
 | `FontRows` | int | The number of rows the glyphs are grouped into.<br>See [Fonts](#fonts). | 8 | 1 | 32768 |
@@ -92,10 +92,17 @@ Hex0.0.1=D0FFC0 # Active characters
 ```
 
 ## Fonts
-![src/font.png](src/font.png) \
-*`src/font.png`, embedded into the executable.*
+![embed/font.png](embed/font.png) \
+*`embed/font.png`*
 
 Font is a MSDF (Multi-channel Signed Distance Field) and must be PNG images. \
 Glyphs should be laid out from left to right and top to bottom. \
 If you provide custom font, you should also provide the total number of glyphs and the number of columns. \
 Unused image space (free from glyphs) can contain anything.
+
+## Code structure
++ `src/`: C sources of the project.
+    + `src/ematrix.c`: ematrix itself.
+    + `src/config.c`: Some configurable constants.
+    + `src/lib/`: External libraries.
++ `embed/`: All files inside are embeded into the executable during build.

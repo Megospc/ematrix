@@ -21,10 +21,15 @@
 
 #include "config.c"
 
-#define lengthof(arr) ((int)(sizeof(arr) / sizeof(*(arr))))
+typedef struct
+{
+    const char* path;
+    const uint8_t* start;
+    const uint8_t* end;
+} embed_def_t;
+#include "../build/embed.c" // Automatically generated during build
 
-extern const unsigned char _binary_src_font_png_start[];
-extern const unsigned char _binary_src_font_png_end[];
+#define lengthof(arr) ((int)(sizeof(arr) / sizeof(*(arr))))
 
 static uint8_t cColor[(MAX_COLOR_RES_Z + 1) *
                        MAX_COLOR_RES_X *
@@ -502,22 +507,71 @@ static void ParseLine(char* line, const char* file, int lineIndex)
     Err("Invalid key: '%s' at %s:%d\n", line, file, lineIndex);
     Fail();
 }
+
+static bool CheckEmbed(const char* path,
+                       const uint8_t** start, const uint8_t** end)
+{
+    const char* pref = "embed://";
+    while (true)
+    {
+        if (*pref == '\0')
+        {
+            break;
+        }
+        if (*pref != *path)
+        {
+            return false;
+        }
+        pref++;
+        path++;
+    }
+    for (int i = 0; i < lengthof(EMBED); i++)
+    {
+        const embed_def_t* d = &EMBED[i];
+        if (strcmp(path, d->path) == 0)
+        {
+            *start = d->start;
+            *end   = d->end;
+            return true;
+        }
+    }
+    Err("Failed to open embed file '%s'\n", path);
+    Fail();
+}
+
 static void ParseFile(const char* path)
 {
-    FILE* file = fopen(path, "r");
-    if (!file)
+    const uint8_t* embedStart = NULL;
+    const uint8_t* embedEnd = NULL;
+    FILE* file = NULL;
+    if (!CheckEmbed(path, &embedStart, &embedEnd))
     {
-        Err("Failed to open file '%s'\n", path);
-        Fail();
+        file = fopen(path, "r");
+        if (!file)
+        {
+            Err("Failed to open file '%s'\n", path);
+            Fail();
+        }
     }
     int i = 0;
     int lineIndex = 1;
     while (true)
     {
         char c;
-        if (fread(&c, 1, 1, file) == 0)
+        if (file)
         {
-            break;
+            if (fread(&c, 1, 1, file) == 0)
+            {
+                break;
+            }
+        }
+        else
+        {
+            if (embedStart == embedEnd)
+            {
+                break;
+            }
+            c = (char)(*embedStart++);
         }
         EnsureBufferSize(i+1);
         if (c == '\n')
@@ -537,7 +591,10 @@ static void ParseFile(const char* path)
         gBuffer[i] = '\0';
         ParseLine(gBuffer, path, lineIndex);
     }
-    fclose(file);
+    if (file)
+    {
+        fclose(file);
+    }
 }
 
 static sig_atomic_t gHasSigint = false;
@@ -1384,35 +1441,27 @@ int main(int argc, char** argv)
 
     int w, h, nc;
     uint32_t* pixels = NULL;
-    if (*cFont == '\0')
+    const uint8_t* embedStart;
+    const uint8_t* embedEnd;
+    if (CheckEmbed(cFont, &embedStart, &embedEnd))
     {
         pixels = (uint32_t*)stbi_load_from_memory(
-            _binary_src_font_png_start,
-            (int)(_binary_src_font_png_end -
-                  _binary_src_font_png_start),
+            embedStart,
+            (int)(embedEnd - embedStart),
             &w, &h, &nc, 4);
-        if (!pixels)
-        {
-            Err("Failed to load embedded font.\nSomething is really wrong.\n"
-                "Here is some info that can help:\n"
-                "_binary_src_font_png_start is %p\n"
-                "_binary_src_font_png_end is %p\n",
-                _binary_src_font_png_start,
-                _binary_src_font_png_end);
-            Fail();
-        }
-        Log("Loaded embedded font\n");
+        Log("Loading embedded font: %s (%p:%p)\n",
+            cFont, embedStart, embedEnd);
     }
     else
     {
         pixels = (uint32_t*)stbi_load(cFont, &w, &h, &nc, 4);
-        if (!pixels)
-        {
-            Err("Failed to load font: %s\n"
-                "Note: Only PNG is supported.\n", cFont);
-            Fail();
-        }
-        Log("Loaded font: %s\n", cFont);
+        Log("Loading font: %s\n", cFont);
+    }
+    if (!pixels)
+    {
+        Err("Failed to load font: %s\n"
+            "Note: Only PNG is supported.\n", cFont);
+        Fail();
     }
     glGenTextures(1, &gFontTexture);
     glActiveTexture(GL_TEXTURE0);
