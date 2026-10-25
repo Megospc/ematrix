@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "lib/glad.h"
 #include "lib/glad.c"
@@ -22,6 +23,10 @@
 #if defined(__WIN32)
     #define OS_WINDOWS
     #include <shlobj.h>
+    #include <process.h>
+    #define getpid _getpid
+#else
+    #include <unistd.h>
 #endif
 
 #include "config.c"
@@ -132,6 +137,7 @@ static int_config_def_t INT_CONFIG_DEFS[] =
     INT_CONFIG_DEF(FontNum, 1, 32768),
     INT_CONFIG_DEF(FontCols, 1, 32768),
     INT_CONFIG_DEF(FontRows, 1, 32768),
+    INT_CONFIG_DEF(Seed, 0, INT_MAX),
     INT_CONFIG_DEF(RandMin, 1, 32768),
     INT_CONFIG_DEF(RandMax, 1, 32768),
     INT_CONFIG_DEF(RandPow, 0, 32768),
@@ -176,6 +182,7 @@ static str_config_def_t STR_CONFIG_DEFS[] =
 static NORETURN void Exit(int code)
 {
     FreeBuffer(&g1);
+    free(gGlyphLut);
     free(gMatrixChars);
     free(gMatrixDrops);
     free(gFragment2);
@@ -557,7 +564,7 @@ static int ParseLineParseInt(const char* value, int min, int max,
     }
     if (l < (long)min || l > (long)max)
     {
-        Err("%s=%ld is out of range [%d-%d] at %s:%d\n",
+        Err("%s=%ld is out of allowed range [%d-%d] at %s:%d\n",
             line, l, min, max, file, lineIndex);
         Fail();
     }
@@ -987,13 +994,21 @@ static const char* GetGlfwError(void)
     return ret;
 }
 
+static uint32_t gSeed = 42;
+static uint32_t RandUint(uint32_t max)
+{
+    gSeed ^= (gSeed << 13);
+    gSeed ^= (gSeed >> 17);
+    gSeed ^= (gSeed << 5);
+    return (gSeed % max);
+}
 static int Rand(int max)
 {
-    return rand() % max;
+    return (int)(RandUint(max));
 }
 static int RandRange(int min, int max)
 {
-    return Rand(max - min + 1) + min;
+    return (int)RandUint(max - min + 1) + min;
 }
 
 static inline matrix_drop_t* MatrixDropAt(int x)
@@ -1378,7 +1393,7 @@ int main(int argc, char** argv)
 
     if (cLog >= 2)
     {
-        printf("%s v1.1 by Megospc\n", (argc < 1 ? "ematrix" : argv[0]));
+        printf("%s v1.1+dev by Megospc\n", (argc < 1 ? "ematrix" : argv[0]));
 #ifndef NDEBUG
         printf("DEBUG BUILD\n");
 #endif
@@ -1394,6 +1409,22 @@ int main(int argc, char** argv)
                 d->name, v, d->min, d->max);
             Fail();
         }
+    }
+
+    gSeed = (uint32_t)cSeed;
+    if (gSeed == 0)
+    {
+        gSeed = (time(NULL) ^ ((uint32_t)getpid() << 16));
+        gSeed &= INT_MAX;
+        if (gSeed == 0)
+        {
+            gSeed = 1;
+        }
+    }
+    Log("Seed: %d\n", (int)gSeed);
+    for (int i = 0; i < 4; i++)
+    {
+        RandUint(1); // Heat-up the generator
     }
 
     gGlyphLut = Malloc(cFontNum * 2 * sizeof(GLfloat), "gGlyphLut");

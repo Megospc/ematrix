@@ -177,6 +177,14 @@ You can pass options directly via the command-line argument `-key=value`, or spe
         <td>32768</td>
     </tr>
     <tr>
+        <td><code>Seed</code></td>
+        <td>int</td>
+        <td>Seed of random generator. If set to zero, seed is determined by current time and PID.</td>
+        <td>0</td>
+        <td>0</td>
+        <td>INT_MAX</td>
+    </tr>
+    <tr>
         <td><code>RandMin</code></td>
         <td>int<br>frames</td>
         <td>Minimum time between glyph randomization.</td>
@@ -428,4 +436,4 @@ Unused image space (free from glyphs) can contain anything.
     + `src/ematrix.c`: ematrix itself.
     + `src/config.c`: Some configurable constants.
     + `src/lib/`: External libraries.
-+ `embed/`: All files inside are embeded into the executable during build.
++ `embed/`: All files inside are embedded into the executable during build.

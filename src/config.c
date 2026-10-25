@@ -21,6 +21,7 @@ static int cVSync = 1;
 static int cFontNum = 57;
 static int cFontCols = 8;
 static int cFontRows = 8;
+static int cSeed = 0;
 static int cRandMin = 8;
 static int cRandMax = 16;
 static int cRandMul = 5;
